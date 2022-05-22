@@ -11,6 +11,11 @@ catkin build quadrotor_msgs # at <your_ws>
 catkin build
 ```
 **Step 2** 
+In a terminal
+```bash
+roscore
+```
+In another terminal
 ```bash
 source devel/setup.bash
 cd src/swarm-arena
