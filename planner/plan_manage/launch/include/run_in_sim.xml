@@ -1,6 +1,7 @@
 <launch>
     <!-- size of map, change the size inflate x, y, z according to your application -->
     <arg name="drone_id" default="0"/>
+    <arg name="infinite_run" default="false"/>
     <arg name="map_size_x"/>
     <arg name="map_size_y"/>
     <arg name="map_size_z"/>
@@ -29,6 +30,7 @@
     <!-- main algorithm params -->
     <include file="$(find ego_planner)/launch/include/advanced_param.xml">
         <arg name="drone_id" value="$(arg drone_id)"/>
+        <arg name="infinite_run" value="$(arg infinite_run)"/>
         <arg name="map_size_x_" value="$(arg map_size_x)"/>
         <arg name="map_size_y_" value="$(arg map_size_y)"/>
         <arg name="map_size_z_" value="$(arg map_size_z)"/>

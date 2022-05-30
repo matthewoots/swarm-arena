@@ -72,6 +72,7 @@ namespace ego_planner
     bool enable_fail_safe_;
     bool enable_ground_height_measurement_;
     bool flag_escape_emergency_;
+    bool infinite_run_;
 
     bool have_trigger_, have_target_, have_odom_, have_new_target_, have_recv_pre_agent_, touch_goal_, mandatory_stop_;
     FSM_EXEC_STATE exec_state_;

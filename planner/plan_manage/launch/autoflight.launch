@@ -28,6 +28,7 @@
     
     <include file="$(find ego_planner)/launch/include/run_in_sim.xml">
         <arg name="drone_id" value="0"/>
+        <arg name="infinite_run" value="true"/>
         <arg name="init_x" value="-12"/>
         <arg name="init_y" value="0"/>
         <arg name="init_z" value="1"/>

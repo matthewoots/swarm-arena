@@ -33,6 +33,7 @@
     <arg name="flight_type"/>
     <arg name="use_multitopology_trajs"/>
     <arg name="drone_id"/>
+    <arg name="infinite_run"/>
     <!-- main node -->
     <!-- <node pkg="ego_planner" name="ego_planner_node" type="ego_planner_node" output="screen" launch-prefix="valgrind"> -->
     <node pkg="ego_planner" name="drone_$(arg drone_id)_ego_planner_node" type="ego_planner_node" output="screen">
@@ -49,6 +50,7 @@
         <remap from="~grid_map/pose"   to = "/drone_$(arg drone_id)_$(arg camera_pose_topic)"/>
         <remap from="~grid_map/depth" to = "/drone_$(arg drone_id)_$(arg depth_topic)"/>
         <!-- planning fsm -->
+        <param name="fsm/infinite_run" value="$(arg infinite_run)"/>
         <param name="fsm/flight_type" value="$(arg flight_type)" type="int"/>
         <param name="fsm/thresh_replan_time" value="1.0" type="double"/>
         <param name="fsm/planning_horizon" value="$(arg planning_horizon)" type="double"/>

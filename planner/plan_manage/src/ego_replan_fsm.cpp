@@ -15,6 +15,7 @@ namespace ego_planner
 
     /*  fsm param  */
     nh.param("fsm/flight_type", target_type_, -1);
+    nh.param("fsm/infinite_run", infinite_run_, false);
     nh.param("fsm/thresh_replan_time", replan_thresh_, -1.0);
     nh.param("fsm/planning_horizon", planning_horizen_, -1.0);
     nh.param("fsm/emergency_time", emergency_time_, 1.0);
@@ -188,6 +189,8 @@ namespace ego_planner
                (final_goal_ - pos).norm() < no_replan_thresh_) // case 2: assign the next waypoint
       {
         wpt_id_++;
+        if(infinite_run_ && wpt_id_ == waypoint_num_ - 1)
+          wpt_id_ = 0;
         planNextWaypoint(wps_[wpt_id_]);
       }
       else if ((t_cur > info->duration - 1e-2) && touch_the_goal) // case 3: the final waypoint reached
