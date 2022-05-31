@@ -174,6 +174,7 @@ private:
   inline bool isInInfBuf(const Eigen::Vector3i &idx);
 
   void publishMap();
+  void publishSelfInflate();
   void publishMapInflate();
 
   // get depth image and camera pose
@@ -223,7 +224,7 @@ private:
   SynchronizerImageOdom sync_image_odom_;
 
   ros::Subscriber indep_cloud_sub_, indep_odom_sub_, extrinsic_sub_;
-  ros::Publisher map_pub_, map_inf_pub_;
+  ros::Publisher map_pub_, map_inf_pub_, ego_inf_pub;
   ros::Timer occ_timer_, vis_timer_, fading_timer_;
 
   //

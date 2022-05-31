@@ -302,7 +302,7 @@ namespace ego_planner
     }
 
     /* --------- collision check data ---------- */
-    LocalTrajData *info = &planner_manager_->traj_.local_traj;
+    LocalTrajData *info = &planner_manager_->traj_.local_traj; // equivalent to LocalTrajData * info; info = &planner->traj_.local_traj;
     auto map = planner_manager_->grid_map_;
     const double t_cur = ros::Time::now().toSec() - info->start_time;
     PtsChk_t pts_chk = info->pts_chk;
@@ -351,6 +351,8 @@ namespace ego_planner
 
         bool dangerous = false;
         dangerous |= map->getInflateOccupancy(p);
+        std::cout << "getinflatedoccupancy returns " << map->getInflateOccupancy(p) << std::endl;
+        std::cout << "dangerous returns " << dangerous << std::endl;
 
         for (size_t id = 0; id < planner_manager_->traj_.swarm_traj.size(); id++)
         {

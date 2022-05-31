@@ -127,7 +127,8 @@ void GridMap::initMap(ros::NodeHandle &nh)
     fading_timer_ = node_.createTimer(ros::Duration(0.5), &GridMap::fadingCallback, this);
 
   map_pub_ = node_.advertise<sensor_msgs::PointCloud2>("grid_map/occupancy", 10);
-  map_inf_pub_ = node_.advertise<sensor_msgs::PointCloud2>("grid_map/occupancy_inflate", 10);
+  map_inf_pub_ = node_.advertise<sensor_msgs::PointCloud2>("grid_map/occupancy_inflate", 10); //zt: only for vis
+  ego_inf_pub = node_.advertise<sensor_msgs::PointCloud2>("grid_map/ego_occupancy", 10); //zt: only for vis
 
   md_.occ_need_update_ = false;
   md_.has_first_depth_ = false;
@@ -191,6 +192,7 @@ void GridMap::visCallback(const ros::TimerEvent & /*event*/)
     return;
 
   ros::Time t0 = ros::Time::now();
+  publishSelfInflate();
   publishMapInflate();
   publishMap();
   ros::Time t1 = ros::Time::now();
@@ -868,6 +870,30 @@ void GridMap::publishMap()
   map_pub_.publish(cloud_msg);
 }
 
+void GridMap::publishSelfInflate()
+{
+  pcl::PointCloud<pcl::PointXYZ> ego_cloud;
+  // double ego_resolution = mp_.resolution_;
+  double ego_resolution = 0.01;
+  for (double xd = md_.camera_pos_(0) - 0.2; xd < md_.camera_pos_(0) + 0.2; xd += ego_resolution)
+  for (double yd = md_.camera_pos_(1) - 0.2; yd < md_.camera_pos_(1) + 0.2; yd += ego_resolution)
+  for (double zd = md_.camera_pos_(2) - 0.2; zd < md_.camera_pos_(2) + 0.2; zd += ego_resolution)
+  {
+    if(pow(xd-md_.camera_pos_(0),2)+pow(yd-md_.camera_pos_(1),2)+pow(zd-md_.camera_pos_(2),2)<=pow(0.2,2))
+    ego_cloud.push_back(pcl::PointXYZ(xd, yd, zd));
+  }
+
+  ego_cloud.width = ego_cloud.points.size();
+  ego_cloud.height = 1;
+  ego_cloud.is_dense = true;
+  ego_cloud.header.frame_id = mp_.frame_id_;
+  sensor_msgs::PointCloud2 ego_cloud_msg;
+
+  pcl::toROSMsg(ego_cloud, ego_cloud_msg);
+  ego_inf_pub.publish(ego_cloud_msg);
+
+}
+
 void GridMap::publishMapInflate()
 {
 
@@ -900,6 +926,26 @@ void GridMap::publishMapInflate()
 
   pcl::toROSMsg(cloud, cloud_msg);
   map_inf_pub_.publish(cloud_msg);
+
+  // pcl::PointCloud<pcl::PointXYZ> ego_cloud;
+  // // double ego_resolution = mp_.resolution_;
+  // double ego_resolution = 0.01;
+  // for (double xd = md_.camera_pos_(0) - 0.2; xd < md_.camera_pos_(0) + 0.2; xd += ego_resolution)
+  // for (double yd = md_.camera_pos_(1) - 0.2; yd < md_.camera_pos_(1) + 0.2; yd += ego_resolution)
+  // for (double zd = md_.camera_pos_(2) - 0.2; zd < md_.camera_pos_(2) + 0.2; zd += ego_resolution)
+  // {
+  //   if(pow(xd-md_.camera_pos_(0),2)+pow(yd-md_.camera_pos_(1),2)+pow(zd-md_.camera_pos_(2),2)<=pow(0.2,2))
+  //   ego_cloud.push_back(pcl::PointXYZ(xd, yd, zd));
+  // }
+
+  // ego_cloud.width = ego_cloud.points.size();
+  // ego_cloud.height = 1;
+  // ego_cloud.is_dense = true;
+  // ego_cloud.header.frame_id = mp_.frame_id_;
+  // sensor_msgs::PointCloud2 ego_cloud_msg;
+
+  // pcl::toROSMsg(ego_cloud, ego_cloud_msg);
+  // ego_inf_pub.publish(ego_cloud_msg);
 }
 
 void GridMap::testIndexingCost()
