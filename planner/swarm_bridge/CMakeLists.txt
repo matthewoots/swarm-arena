@@ -18,10 +18,11 @@ find_package(catkin REQUIRED COMPONENTS
   traj_utils
   traj_opt # for traj2odom_node
   sensor_msgs
+  roslib
 )
 
 catkin_package(
- CATKIN_DEPENDS traj_utils
+ CATKIN_DEPENDS traj_utils roslib
 )
 
 include_directories(

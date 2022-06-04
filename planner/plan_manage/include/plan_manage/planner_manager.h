@@ -8,9 +8,10 @@
 #include <plan_env/grid_map.h>
 #include <traj_utils/plan_container.hpp>
 #include <ros/ros.h>
+#include <ros/package.h>
 #include <traj_utils/planning_visualization.h>
 #include <optimizer/poly_traj_utils.hpp>
-
+#define SP_INFINITY         1e+9
 namespace ego_planner
 {
 
@@ -52,11 +53,18 @@ namespace ego_planner
     bool setLocalTrajFromOpt(const poly_traj::MinJerkOpt &opt, const bool touch_goal);
     inline double getSwarmClearance(void) { return ploy_traj_opt_->get_swarm_clearance_(); }
     inline int getCpsNumPrePiece(void) { return ploy_traj_opt_->get_cps_num_prePiece_(); }
+    void saveSummarizedResult();
     // inline PtsChk_t getPtsCheck(void) { return ploy_traj_opt_->get_pts_check_(); }
 
     PlanParameters pp_;
     GridMap::Ptr grid_map_;
     TrajContainer traj_;
+    std::string package_path;
+    ros::Time sim_start_time;
+    std::string file_name_time;
+    std::string scenario;
+    bool mission_finished;
+    double min_time_total, max_time_total, average_time_total, init_time, opt_time;
 
   private:
     PlanningVisualization::Ptr visualization_;

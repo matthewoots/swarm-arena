@@ -25,10 +25,12 @@
     <arg name="target4_x" default="0.0"/>
     <arg name="target4_y" default="0.0"/>
     <arg name="target4_z" default="0.0"/>
+    <arg name="scenario" default="none"/>
     <!-- topic of your odometry such as VIO or LIO -->
     <arg name="odom_topic"/>
     <!-- main algorithm params -->
     <include file="$(find ego_planner)/launch/include/advanced_param.xml">
+        <arg name="scenario" value="$(arg scenario)"/>
         <arg name="drone_id" value="$(arg drone_id)"/>
         <arg name="infinite_run" value="$(arg infinite_run)"/>
         <arg name="map_size_x_" value="$(arg map_size_x)"/>

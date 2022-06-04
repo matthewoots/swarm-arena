@@ -207,6 +207,9 @@ namespace ego_planner
 
         /* The navigation task completed */
         changeFSMExecState(WAIT_TARGET, "FSM");
+        // std::cout<<"mission finished"<<std::endl;
+        planner_manager_->mission_finished = true;
+        planner_manager_->saveSummarizedResult();
       }
       else if (t_cur > replan_thresh_ || (!touch_the_goal && close_to_current_traj_end)) // case 3: time to perform next replan
       {
@@ -351,8 +354,8 @@ namespace ego_planner
 
         bool dangerous = false;
         dangerous |= map->getInflateOccupancy(p);
-        std::cout << "getinflatedoccupancy returns " << map->getInflateOccupancy(p) << std::endl;
-        std::cout << "dangerous returns " << dangerous << std::endl;
+        // std::cout << "getinflatedoccupancy returns " << map->getInflateOccupancy(p) << std::endl;
+        // std::cout << "dangerous returns " << dangerous << std::endl;
 
         for (size_t id = 0; id < planner_manager_->traj_.swarm_traj.size(); id++)
         {

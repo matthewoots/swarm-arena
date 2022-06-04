@@ -12,6 +12,37 @@ namespace ego_planner
 
   EGOPlannerManager::~EGOPlannerManager() { std::cout << "des manager" << std::endl; }
 
+  void EGOPlannerManager::saveSummarizedResult()
+  {
+    std::cout<<"plan_manager receive finished"<<std::endl;
+    std::string file_name = package_path + "/log/summary_" + scenario + ".csv";
+    std::ifstream result_csv_in(file_name);
+    bool print_description = false;
+    if(not result_csv_in or result_csv_in.peek() == std::ifstream::traits_type::eof())
+    {
+      print_description = true;
+    }
+
+    std::ofstream result_csv_out;
+    result_csv_out.open(file_name, std::ios_base::app);
+        // if(print_description){
+        //     result_csv_out << "drone_id,min_planning_time,max_planning_time, avg_planning_time,average_init_time,average_opt_time\n";
+        //                   //  << "average_planning_time,min_planning_time,max_planning_time,"
+        //                   //  << "initial_traj_planning_time,obstacle_prediction_time,goal_planning_time,"
+        //                   //  << "lsc_generation_time,sfc_generation_time,traj_optimization_time,"
+        //                   //  << "mission_file_name,world_file_name,planner_mode,prediction_mode,initial_traj_mode,"
+        //                   //  << "slack_mode,goal_mode,world_dimension,dt,horizon,N_constraint_segments\n";
+        // }
+
+        result_csv_out << pp_.drone_id << ","
+                       << min_time_total << ","
+                       << max_time_total << ","
+                       << average_time_total << ","
+                       << init_time << ","
+                       << opt_time << "\n";
+        result_csv_out.close();
+  }
+
   void EGOPlannerManager::initPlanModules(ros::NodeHandle &nh, PlanningVisualization::Ptr vis)
   {
     /* read algorithm parameters */
@@ -23,6 +54,7 @@ namespace ego_planner
     nh.param("manager/planning_horizon", pp_.planning_horizen_, 5.0);
     nh.param("manager/use_multitopology_trajs", pp_.use_multitopology_trajs, false);
     nh.param("manager/drone_id", pp_.drone_id, -1);
+    nh.param<std::string>("manager/scenario", scenario, "none");
 
     grid_map_.reset(new GridMap);
     grid_map_->initMap(nh);
@@ -35,6 +67,17 @@ namespace ego_planner
 
     ploy_traj_opt_->setSwarmTrajs(&traj_.swarm_traj);
     ploy_traj_opt_->setDroneId(pp_.drone_id);
+
+    package_path = ros::package::getPath("ego_planner");
+    sim_start_time = ros::Time::now();
+    file_name_time = std::to_string(sim_start_time.toSec());
+    mission_finished = false;
+    min_time_total = SP_INFINITY;
+    max_time_total = 0;
+    average_time_total = 0;
+    init_time = 0;
+    opt_time = 0;
+  
   }
 
   bool EGOPlannerManager::reboundReplan(
@@ -161,11 +204,32 @@ namespace ego_planner
     if (flag_success)
     {
       static double sum_time = 0;
+      static double sum_time_init = 0;
+      static double sum_time_opt = 0;
       static int count_success = 0;
       sum_time += (t_init + t_opt).toSec();
+      sum_time_init += (t_init).toSec();
+      sum_time_opt += (t_opt).toSec();
       count_success++;
+
+      double plan_time_iter = (t_init + t_opt).toSec();
+      average_time_total = sum_time / count_success;
+
+      init_time = sum_time_init / count_success;
+      opt_time = sum_time_opt / count_success;
+
+      if (plan_time_iter > max_time_total)
+      {
+        max_time_total = plan_time_iter;
+      }
+
+      if (plan_time_iter < min_time_total)
+      {
+        min_time_total = plan_time_iter;
+      }
+      
       printf("Time:\033[42m%.3fms,\033[0m init:%.3fms, optimize:%.3fms, avg=%.3fms\n",
-             (t_init + t_opt).toSec() * 1000, t_init.toSec() * 1000, t_opt.toSec() * 1000, sum_time / count_success * 1000);
+             plan_time_iter * 1000, t_init.toSec() * 1000, t_opt.toSec() * 1000, average_time_total * 1000);
       // cout << "total time:\033[42m" << (t_init + t_opt).toSec()
       //      << "\033[0m,init:" << t_init.toSec()
       //      << ",optimize:" << t_opt.toSec()
@@ -176,6 +240,10 @@ namespace ego_planner
       visualization_->displayOptimalList(cstr_pts, 0);
 
       continous_failures_count_ = 0;
+
+      
+
+
     }
     else
     {
