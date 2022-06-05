@@ -12,8 +12,10 @@ namespace ego_planner
 
   EGOPlannerManager::~EGOPlannerManager() { std::cout << "des manager" << std::endl; }
 
-  void EGOPlannerManager::saveSummarizedResult()
+  void EGOPlannerManager::saveSummarizedResult(ros::Time start, ros::Time end)
   {
+    double mission_time = (end-start).toSec();
+    std::cout<<"mission time"<< mission_time <<std::endl;
     std::cout<<"plan_manager receive finished"<<std::endl;
     std::string file_name = package_path + "/log/summary_" + scenario + ".csv";
     std::ifstream result_csv_in(file_name);
@@ -39,7 +41,8 @@ namespace ego_planner
                        << max_time_total << ","
                        << average_time_total << ","
                        << init_time << ","
-                       << opt_time << "\n";
+                       << opt_time << ","
+                       << mission_time << "\n";
         result_csv_out.close();
   }
 

@@ -58,6 +58,7 @@ namespace ego_planner
     data_disp_pub_ = nh.advertise<traj_utils::DataDisp>("planning/data_display", 100);
     heartbeat_pub_ = nh.advertise<std_msgs::Empty>("planning/heartbeat", 10);
     ground_height_pub_ = nh.advertise<std_msgs::Float64>("/ground_height_measurement", 10);
+    // mission_finished_pub_ = nh.advertise<std_msgs::Bool>("/" + to_string(planner_manager_->pp_.drone_id) + "/mission_finished", 10, true);
 
     if (target_type_ == TARGET_TYPE::MANUAL_TARGET)
     {
@@ -74,6 +75,9 @@ namespace ego_planner
         ros::spinOnce();
         ros::Duration(0.001).sleep();
       }
+      
+      std::cout << "Planner start planning for drone " + to_string(planner_manager_->pp_.drone_id) << std::endl;
+      start_time = ros::Time::now();
 
       readGivenWpsAndPlan();
     }
@@ -207,9 +211,15 @@ namespace ego_planner
 
         /* The navigation task completed */
         changeFSMExecState(WAIT_TARGET, "FSM");
+
+        end_time = ros::Time::now();
+        
         // std::cout<<"mission finished"<<std::endl;
         planner_manager_->mission_finished = true;
-        planner_manager_->saveSummarizedResult();
+        // std_msgs::Bool mission_finished_pub_msg;
+        // mission_finished_pub_msg.data = true;
+        // mission_finished_pub_.publish(mission_finished_pub_msg);
+        planner_manager_->saveSummarizedResult(start_time, end_time);
       }
       else if (t_cur > replan_thresh_ || (!touch_the_goal && close_to_current_traj_end)) // case 3: time to perform next replan
       {

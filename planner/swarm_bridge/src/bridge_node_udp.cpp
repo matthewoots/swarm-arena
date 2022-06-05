@@ -336,7 +336,7 @@ int main(int argc, char **argv)
   // std::ifstream result_csv_in(file_name);
   std::ofstream result_csv_out;
   result_csv_out.open(file_name, std::ios_base::app);
-  result_csv_out << "\ndrone_id,min_planning_time,max_planning_time, avg_planning_time,average_init_time,average_opt_time\n";;
+  result_csv_out << "\ndrone_id,min_planning_time,max_planning_time, avg_planning_time,average_init_time,average_opt_time, mission_time\n";;
   result_csv_out.close();
 
 

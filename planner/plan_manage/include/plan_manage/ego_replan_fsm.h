@@ -9,6 +9,7 @@
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
 #include <std_msgs/Float64.h>
+#include <std_msgs/Bool.h>
 #include <vector>
 #include <visualization_msgs/Marker.h>
 
@@ -89,6 +90,9 @@ namespace ego_planner
     ros::Timer exec_timer_, safety_timer_;
     ros::Subscriber waypoint_sub_, odom_sub_, trigger_sub_, broadcast_ploytraj_sub_, mandatory_stop_sub_;
     ros::Publisher poly_traj_pub_, data_disp_pub_, broadcast_ploytraj_pub_, heartbeat_pub_, ground_height_pub_;
+
+    // ros::Publisher mission_finished_pub_;
+    ros::Time start_time, end_time;
 
     /* state machine functions */
     void execFSMCallback(const ros::TimerEvent &e);
