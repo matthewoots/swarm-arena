@@ -27,7 +27,6 @@ ros::Publisher other_odoms_pub_, one_traj_pub_, mandatory_stop_pub_, goal_pub_, 
 string udp_ip_;
 int drone_id_;
 double odom_broadcast_freq_;
-std::string scenario;
 char udp_recv_buf_[BUF_LEN], udp_send_buf_[BUF_LEN];
 struct sockaddr_in addr_udp_send_;
 nav_msgs::Odometry odom_msg_;
@@ -329,15 +328,14 @@ int main(int argc, char **argv)
   nh.param("broadcast_ip", udp_ip_, string("127.0.0.255"));
   nh.param("drone_id", drone_id_, -1);
   nh.param("odom_max_freq", odom_broadcast_freq_, 1000.0);
-  nh.param<std::string>("scenario", scenario, "none");
 
-  std::string package_path = ros::package::getPath("ego_planner");
-  std::string file_name = package_path + "/log/summary_" + scenario + ".csv";
-  // std::ifstream result_csv_in(file_name);
-  std::ofstream result_csv_out;
-  result_csv_out.open(file_name, std::ios_base::app);
-  result_csv_out << "\ndrone_id,min_planning_time,max_planning_time, avg_planning_time,average_init_time,average_opt_time, mission_time\n";;
-  result_csv_out.close();
+  // std::string package_path = ros::package::getPath("ego_planner");
+  // std::string file_name = package_path + "/log/summary_" + scenario + ".csv";
+  // // std::ifstream result_csv_in(file_name);
+  // std::ofstream result_csv_out;
+  // result_csv_out.open(file_name, std::ios_base::app);
+  // result_csv_out << "\ndrone_id,min_planning_time,max_planning_time, avg_planning_time,average_init_time,average_opt_time, mission_time, distance\n";;
+  // result_csv_out.close();
 
 
   if (drone_id_ == -1)

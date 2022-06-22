@@ -84,6 +84,8 @@ namespace ego_planner
     Eigen::Vector3d local_target_pt_, local_target_vel_; // local target state
     Eigen::Vector3d odom_pos_, odom_vel_, odom_acc_;     // odometry state
     std::vector<Eigen::Vector3d> wps_;
+    std::vector<Eigen::Vector3f> flight_path_; // for trajectory distance calculation
+    double max_speed;
 
     /* ROS utils */
     ros::NodeHandle node_;
@@ -124,6 +126,9 @@ namespace ego_planner
 
     /* ground height measurement */
     bool measureGroundHeight(double &height);
+
+    /* compute trajectory distance*/
+    double computeFlightDistance(std::vector<Eigen::Vector3f> flight_path_container);
   };
 
 } // namespace ego_planner

@@ -18,7 +18,9 @@ def main(argv):
     <include file=\"$(find swarm_bridge)/launch/bridge_udp.launch\">\n\
         <arg name=\"drone_id\" value=\"999\"/>\n\
         <arg name=\"broadcast_ip\" value=\"127.0.0.255\"/>\n\
-    </include>\n\n".format(scenario_ = scenario)
+    </include>\n\n 	 <node pkg=\"csv_log\" name=\"csv_logging\" type=\"csv_log_node\" output=\"screen\">\n\
+        <param name=\"scenario\" value=\"$(arg scenario)\"/>\n\
+    </node>\n \n".format(scenario_ = scenario)
 	str_end = "</launch>\n"
 		
 	height = 1.5

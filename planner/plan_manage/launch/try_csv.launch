@@ -1,0 +1,7 @@
+<launch>
+    <arg name = "drone_id" value="1"/>
+    <arg name = "scenario" value="haha"/>
+    <node pkg="csv_log" name="drone_$(arg drone_id)_csv_logging" type="csv_log_node" output="screen">
+        <param name="scenario" value="$(arg scenario)"/>
+    </node>
+</launch>

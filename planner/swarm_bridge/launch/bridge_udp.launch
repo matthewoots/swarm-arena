@@ -2,7 +2,7 @@
 
   <arg name="drone_id"/>
   <arg name="broadcast_ip"/>
-  <arg name="scenario"/>
+  <!-- <arg name="scenario"/> -->
 
   <node pkg="swarm_bridge" name="drone_$(arg drone_id)_bridge_node" type="bridge_node_udp" output="screen">
   
@@ -12,7 +12,7 @@
     <param name="broadcast_ip" value="$(arg broadcast_ip)" type="string"/>
     <param name="drone_id" value="$(arg drone_id)"/>
     <param name="odom_max_freq" value="70"/>
-    <param name="scenario" value="$(arg scenario)"/>
+    <!-- <param name="scenario" value="$(arg scenario)"/> -->
 
   </node>
 

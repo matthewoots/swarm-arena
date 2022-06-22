@@ -35,6 +35,10 @@
     <arg name="drone_id"/>
     <arg name="infinite_run"/>
     <arg name="scenario"/>
+
+    <!-- <node pkg="csv_log" name="drone_$(arg drone_id)_csv_logging" type="csv_log_node" output="screen">
+        <param name="scenario" value="$(arg scenario)"/>
+    </node> -->
     <!-- main node -->
     <!-- <node pkg="ego_planner" name="ego_planner_node" type="ego_planner_node" output="screen" launch-prefix="valgrind"> -->
     <node pkg="ego_planner" name="drone_$(arg drone_id)_ego_planner_node" type="ego_planner_node" output="screen">

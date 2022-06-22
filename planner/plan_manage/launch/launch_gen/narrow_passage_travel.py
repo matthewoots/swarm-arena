@@ -3,10 +3,10 @@ import numpy as np
 import os
 import math
 
-fname = "narrow_passage_swap.launch"
+fname = "narrow_passage_travel.launch"
 def main(argv):
 	num = int(argv[1])
-	scenario = str(num) + "agent_narrow_passage_swap"
+	scenario = str(num) + "agent_narrow_passage_travel"
 	str_begin = "<launch>\n\
 	<arg name=\"map_size_x\" value=\"40.0\"/>\n\
 	<arg name=\"map_size_y\" value=\"40.0\"/>\n\
@@ -33,14 +33,26 @@ def main(argv):
 	file.write(str_begin)
 	start_position = np.zeros([num,3])
 	goal_position = np.zeros([num,3])
-	for i in range(num):
-		if (i+1)<(num+1)/2+1:
-			start_position[i,:] = [distance_from_wall, i*initial_spacing - ((num+1)/2-1) * initial_spacing/2, height]
-		else:
-			start_position[i,:] = [-distance_from_wall, (i - (num+1)/2)*initial_spacing - ((num+1)/2-1) * initial_spacing/2, height]
+
+	y_dist = np.zeros([num,1])
+	queue_length = ((num-1) * initial_spacing)/2
 
 	for i in range(num):
-		goal_position[i,:] = start_position[num-1-i,:]
+		y_dist[i] = i*initial_spacing - queue_length
+
+
+	for i in range(num):
+		start_position[i,:] = [distance_from_wall, y_dist[i], height]
+		goal_position[i,:] = [-distance_from_wall, -y_dist[i], height]
+	np.flip(goal_position, 0)
+	# for i in range(num):
+	# 	if (i+1)<(num+1)/2+1:
+	# 		start_position[i,:] = [distance_from_wall, i*initial_spacing - ((num+1)/2-1) * initial_spacing/2, height]
+	# 	else:
+	# 		start_position[i,:] = [-distance_from_wall, (i - (num+1)/2)*initial_spacing - ((num+1)/2-1) * initial_spacing/2, height]
+
+	# for i in range(num):
+	# 	goal_position[i,:] = start_position[num-1-i,:]
 	
 	for i in range(num):
 		str_for_agent = "    <include file=\"$(find ego_planner)/launch/include/run_in_sim.xml\">\n\

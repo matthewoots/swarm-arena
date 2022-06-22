@@ -16,9 +16,10 @@ def main(argv):
     <!-- swarm topic transmitter bridge-->\n\
     <include file=\"$(find swarm_bridge)/launch/bridge_udp.launch\">\n\
     <arg name=\"drone_id\" value=\"999\"/>\n\
-	<arg name=\"scenario\" value=\"$(arg scenario)\"/>\n\
-    <arg name=\"broadcast_ip\" value=\"127.0.0.255\"/>\n\
-    </include>\n \n".format(scenario_ = scenario)
+	<arg name=\"broadcast_ip\" value=\"127.0.0.255\"/>\n\
+    </include>\n \n 	<node pkg=\"csv_log\" name=\"csv_logging\" type=\"csv_log_node\" output=\"screen\">\n\
+        <param name=\"scenario\" value=\"$(arg scenario)\"/>\n\
+    </node>\n \n".format(scenario_ = scenario)
     # 	<!-- map --> \n\
 	# 	<node pkg =\"map_generator\" name =\"random_forest\" type =\"random_forest\" output = \"screen\">\n\
     #     <param name=\"map/x_size\"     value=\"4\" />\n\

@@ -12,6 +12,7 @@ namespace ego_planner
     have_recv_pre_agent_ = false;
     flag_escape_emergency_ = true;
     mandatory_stop_ = false;
+    max_speed = 0;
 
     /*  fsm param  */
     nh.param("fsm/flight_type", target_type_, -1);
@@ -44,7 +45,7 @@ namespace ego_planner
     exec_timer_ = nh.createTimer(ros::Duration(0.01), &EGOReplanFSM::execFSMCallback, this);
     safety_timer_ = nh.createTimer(ros::Duration(0.05), &EGOReplanFSM::checkCollisionCallback, this);
 
-    odom_sub_ = nh.subscribe("odom_world", 1, &EGOReplanFSM::odometryCallback, this);
+    odom_sub_ = nh.subscribe("odom_world", 1, &EGOReplanFSM::odometryCallback, this); // message is remapped from /odom
     mandatory_stop_sub_ = nh.subscribe("mandatory_stop", 1, &EGOReplanFSM::mandatoryStopCallback, this);
 
     /* Use MINCO trajectory to minimize the message size in wireless communication */
@@ -83,6 +84,18 @@ namespace ego_planner
     }
     else
       cout << "Wrong target_type_ value! target_type_=" << target_type_ << endl;
+  }
+
+  double EGOReplanFSM::computeFlightDistance(std::vector<Eigen::Vector3f> flight_path_container)
+  {
+    std::vector<Eigen::Vector3f> copy = flight_path_container;
+    double total_dist = 0;
+    for(int i=0; i<copy.size()-1; i++)
+    {
+      total_dist += (copy[i+1] - copy[i]).norm();
+    }
+
+    return total_dist;
   }
 
   void EGOReplanFSM::execFSMCallback(const ros::TimerEvent &e)
@@ -219,7 +232,10 @@ namespace ego_planner
         // std_msgs::Bool mission_finished_pub_msg;
         // mission_finished_pub_msg.data = true;
         // mission_finished_pub_.publish(mission_finished_pub_msg);
-        planner_manager_->saveSummarizedResult(start_time, end_time);
+        std::vector<Eigen::Vector3f> copy = flight_path_;
+        double dist = this->computeFlightDistance(copy);
+        // std::cout << "agent " << planner_manager_->pp_.drone_id << "flight distance " << dist << std::endl;
+        planner_manager_->saveSummarizedResult(start_time, end_time, dist, max_speed);
       }
       else if (t_cur > replan_thresh_ || (!touch_the_goal && close_to_current_traj_end)) // case 3: time to perform next replan
       {
@@ -658,6 +674,17 @@ namespace ego_planner
     odom_vel_(2) = msg->twist.twist.linear.z;
 
     have_odom_ = true;
+
+    flight_path_.push_back({msg->pose.pose.position.x,msg->pose.pose.position.y,msg->pose.pose.position.z});
+
+    double speed = Eigen::Vector3f({odom_vel_(0), odom_vel_(1), odom_vel_(2)}).norm();
+
+    if(speed > max_speed)
+    {
+      max_speed = speed;
+    }
+
+    // std::cout << "odom_cb within replan fsm " <<  flight_path_.size() << std::endl;
   }
 
   void EGOReplanFSM::triggerCallback(const geometry_msgs::PoseStampedPtr &msg)
