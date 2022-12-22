@@ -30,10 +30,27 @@ namespace ego_planner
       nh.param("fsm/waypoint" + to_string(i) + "_z", waypoints_[i][2], -1.0);
     }
 
+    nh.param("fsm/corridor_gen/resolution", resolution_, 0.1);
+    nh.param("fsm/corridor_gen/clearance", clearance_, 0.1);
+    nh.param("fsm/corridor_gen/ceiling", ceiling_, 3.0);
+    nh.param("fsm/corridor_gen/floor_limit", floor_limit_, 1.0);
+    nh.param("fsm/corridor_gen/goal_pt_margin", goal_pt_margin_, 0.2);
+    nh.param("fsm/corridor_gen/max_sample", max_sample_, 500);
 
     /* initialize main modules */
     visualization_.reset(new PlanningVisualization(nh));
+    grid_map_.reset(new GridMap);
+    grid_map_->initMap(nh);
+
+    a_star_.reset(new AStar);
+    a_star_->initGridMap(grid_map_, Eigen::Vector3i(100, 100, 100));
+    
+    local_cloud_.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    corridor_gen_ = std::make_shared<CorridorGen::CorridorGenerator>(resolution_, clearance_, max_sample_, ceiling_, floor_limit_, goal_pt_margin_);
+
     planner_manager_.reset(new EGOPlannerManager);
+
+    planner_manager_->setEnvironment(grid_map_);
     planner_manager_->initPlanModules(nh, visualization_);
 
     have_trigger_ = !flag_realworld_experiment_;
@@ -45,6 +62,7 @@ namespace ego_planner
 
     odom_sub_ = nh.subscribe("odom_world", 1, &EGOReplanFSM::odometryCallback, this);
     mandatory_stop_sub_ = nh.subscribe("mandatory_stop", 1, &EGOReplanFSM::mandatoryStopCallback, this);
+    cloud_sub_ = nh.subscribe("mandatory_stop", 1, &EGOReplanFSM::cloudCallback, this);
 
     /* Use MINCO trajectory to minimize the message size in wireless communication */
     broadcast_ploytraj_pub_ = nh.advertise<traj_utils::MINCOTraj>("planning/broadcast_traj_send", 10);
@@ -176,7 +194,7 @@ namespace ego_planner
       Eigen::Vector3d pos = info->traj.getPos(t_cur);
       bool touch_the_goal = ((local_target_pt_ - final_goal_).norm() < 1e-2);
 
-      const PtsChk_t* chk_ptr = &planner_manager_->traj_.local_traj.pts_chk;
+      const PtsChk_t *chk_ptr = &planner_manager_->traj_.local_traj.pts_chk;
       bool close_to_current_traj_end = (chk_ptr->size() >= 1 && chk_ptr->back().size() >= 1) ? chk_ptr->back().back().first - t_cur < emergency_time_ : 0; // In case of empty vector
 
       if (mondifyInCollisionFinalGoal()) // case 1: find that current goal is in obstacles
@@ -446,7 +464,7 @@ namespace ego_planner
     return plan_success;
   }
 
-  bool EGOReplanFSM::planFromGlobalTraj(const int trial_times /*=1*/) //zx-todo
+  bool EGOReplanFSM::planFromGlobalTraj(const int trial_times /*=1*/) // zx-todo
   {
 
     start_pt_ = odom_pos_;
@@ -505,6 +523,31 @@ namespace ego_planner
   bool EGOReplanFSM::planNextWaypoint(const Eigen::Vector3d next_wp)
   {
     bool success = false;
+
+    // zt: raynor
+    // conduct A* search
+    std::vector<Eigen::Vector3d> path_list;
+    ASTAR_RET ret = a_star_->AstarSearch(grid_map_->getResolution(), odom_pos_, next_wp);
+
+    switch (ret)
+    {
+    case ASTAR_RET::SUCCESS:
+      /* code */
+      {
+        path_list = a_star_->getPath();
+        break;
+      }
+
+    case ASTAR_RET::SEARCH_ERR:
+    {
+      ROS_ERROR("Astar search error.");
+      return false;
+    }
+
+    default:
+      break;
+    }
+
     std::vector<Eigen::Vector3d> one_pt_wps;
     one_pt_wps.push_back(next_wp);
     success = planner_manager_->planGlobalTrajWaypoints(
@@ -642,6 +685,14 @@ namespace ego_planner
     have_odom_ = true;
   }
 
+  void EGOReplanFSM::cloudCallback(const sensor_msgs::PointCloud2ConstPtr &cloud_in)
+  {
+    pcl::PCLPointCloud2 pcl_pc2;
+    pcl_conversions::toPCL(*cloud_in, pcl_pc2);
+    pcl::fromPCLPointCloud2(pcl_pc2, *local_cloud_);
+    corridor_gen_->updatePointCloud(local_cloud_);
+  }
+
   void EGOReplanFSM::triggerCallback(const geometry_msgs::PoseStampedPtr &msg)
   {
     have_trigger_ = true;
@@ -706,7 +757,7 @@ namespace ego_planner
       }
     }
 
-    if ( msg->start_time.toSec() <= planner_manager_->traj_.swarm_traj[recv_id].start_time ) // This must be called after buffer fill-up
+    if (msg->start_time.toSec() <= planner_manager_->traj_.swarm_traj[recv_id].start_time) // This must be called after buffer fill-up
     {
       ROS_WARN("Old traj received, ignored.");
       return;
@@ -856,7 +907,7 @@ namespace ego_planner
     auto map = planner_manager_->grid_map_;
     ros::Time t_now = ros::Time::now();
 
-    double forward_t = 2.0 / planner_manager_->pp_.max_vel_; //2.0m
+    double forward_t = 2.0 / planner_manager_->pp_.max_vel_; // 2.0m
     double traj_t = (t_now.toSec() - traj->start_time) + forward_t;
     if (traj_t <= traj->duration)
     {

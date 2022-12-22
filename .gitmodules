@@ -1,0 +1,4 @@
+[submodule "planner/corridor_gen"]
+	path = planner/plan_manage/include/corridor_gen
+	url = git@github.com:mamariomiamo/corridor_gen.git
+	branch = main

@@ -21,6 +21,8 @@
 #include <traj_utils/planning_visualization.h>
 #include <traj_utils/PolyTraj.h>
 #include <traj_utils/MINCOTraj.h>
+#include <path_searching/dyn_a_star.h>
+#include <corridor_gen/include/corridor_gen.h>
 
 using std::vector;
 
@@ -60,6 +62,10 @@ namespace ego_planner
     EGOPlannerManager::Ptr planner_manager_;
     PlanningVisualization::Ptr visualization_;
     traj_utils::DataDisp data_disp_;
+    AStar::Ptr a_star_;
+    GridMap::Ptr grid_map_;
+    std::shared_ptr<CorridorGen::CorridorGenerator> corridor_gen_;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr local_cloud_;
 
     /* parameters */
     int target_type_; // 1 mannual select, 2 hard code
@@ -72,6 +78,10 @@ namespace ego_planner
     bool enable_fail_safe_;
     bool enable_ground_height_measurement_;
     bool flag_escape_emergency_;
+
+    // zt: corridor_generator parameter
+    double resolution_, clearance_, ceiling_, floor_limit_, goal_pt_margin_;
+    int max_sample_;
 
     bool have_trigger_, have_target_, have_odom_, have_new_target_, have_recv_pre_agent_, touch_goal_, mandatory_stop_;
     FSM_EXEC_STATE exec_state_;
@@ -86,7 +96,7 @@ namespace ego_planner
     /* ROS utils */
     ros::NodeHandle node_;
     ros::Timer exec_timer_, safety_timer_;
-    ros::Subscriber waypoint_sub_, odom_sub_, trigger_sub_, broadcast_ploytraj_sub_, mandatory_stop_sub_;
+    ros::Subscriber waypoint_sub_, odom_sub_, trigger_sub_, broadcast_ploytraj_sub_, mandatory_stop_sub_, cloud_sub_;
     ros::Publisher poly_traj_pub_, data_disp_pub_, broadcast_ploytraj_pub_, heartbeat_pub_, ground_height_pub_;
 
     /* state machine functions */
@@ -119,6 +129,9 @@ namespace ego_planner
 
     /* ground height measurement */
     bool measureGroundHeight(double &height);
+
+    // required by corridor_gen
+    void cloudCallback(const sensor_msgs::PointCloud2ConstPtr &cloud_in);
   };
 
 } // namespace ego_planner

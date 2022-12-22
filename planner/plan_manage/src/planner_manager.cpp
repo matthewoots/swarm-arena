@@ -24,8 +24,9 @@ namespace ego_planner
     nh.param("manager/use_multitopology_trajs", pp_.use_multitopology_trajs, false);
     nh.param("manager/drone_id", pp_.drone_id, -1);
 
-    grid_map_.reset(new GridMap);
-    grid_map_->initMap(nh);
+    // zt raynor: GridMap is set by calling EGOPlannerManager::setEnvironment
+    // grid_map_.reset(new GridMap);
+    // grid_map_->initMap(nh);
 
     ploy_traj_opt_.reset(new PolyTrajOptimizer);
     ploy_traj_opt_->setParam(nh);
@@ -35,6 +36,12 @@ namespace ego_planner
 
     ploy_traj_opt_->setSwarmTrajs(&traj_.swarm_traj);
     ploy_traj_opt_->setDroneId(pp_.drone_id);
+  }
+
+  // zt raynor
+  void EGOPlannerManager::setEnvironment(const GridMap::Ptr &map)
+  {
+    grid_map_ = map;
   }
 
   bool EGOPlannerManager::reboundReplan(

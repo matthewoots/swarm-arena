@@ -516,7 +516,7 @@ namespace ego_planner
         }
       }
 
-      //step 3
+      // step 3
       if (got_intersection_id >= 0)
       {
         for (int j = got_intersection_id + 1; j <= adjusted_segment_ids[i].second; ++j)
@@ -733,7 +733,7 @@ namespace ego_planner
           }
         }
 
-        //step 3
+        // step 3
         if (got_intersection_id >= 0)
         {
           for (int j = got_intersection_id + 1; j <= segment_ids[i].second; ++j)
@@ -761,7 +761,7 @@ namespace ego_planner
     return false;
   }
 
-  bool PolyTrajOptimizer::allowRebound(void) //zxzxzx
+  bool PolyTrajOptimizer::allowRebound(void) // zxzxzx
   {
     // criterion 1
     if (iter_num_ < 3)
@@ -1293,11 +1293,16 @@ namespace ego_planner
         // collision
         if (obstacleGradCostP(i_dp, pos, gradp, costp))
         {
+          // gradViolaPc = beta0 * gradp.transpose();
+          // gradViolaPt = alpha * gradp.transpose() * vel;
+          // jerkOpt_.get_gdC().block<6, 3>(i * 6, 0) += omg * step * gradViolaPc;
+          // gdT(i) += omg * (costp / K + step * gradViolaPt);
+          // costs(0) += omg * step * costp;
           gradViolaPc = beta0 * gradp.transpose();
           gradViolaPt = alpha * gradp.transpose() * vel;
-          jerkOpt_.get_gdC().block<6, 3>(i * 6, 0) += omg * step * gradViolaPc;
-          gdT(i) += omg * (costp / K + step * gradViolaPt);
-          costs(0) += omg * step * costp;
+          jerkOpt_.get_gdC().block<6, 3>(i * 6, 0) += omg * step * gradViolaPc * 0;
+          gdT(i) += omg * (costp / K + step * gradViolaPt) * 0;
+          costs(0) += omg * step * costp * 0;
         }
 
         // swarm
@@ -1468,7 +1473,7 @@ namespace ego_planner
       }
 
       double traj_i_satrt_time = swarm_trajs_->at(id).start_time;
-      double pt_time = (t_now_ - traj_i_satrt_time) + t; // never assign a high-precision golbal time to a double directly!
+      double pt_time = (t_now_ - traj_i_satrt_time) + t;                                      // never assign a high-precision golbal time to a double directly!
       const double CLEARANCE = (swarm_clearance_ + swarm_trajs_->at(id).des_clearance) * 1.5; // 1.5 is to compensate slight constraint violation
       const double CLEARANCE2 = CLEARANCE * CLEARANCE;
 
