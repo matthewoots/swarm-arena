@@ -9,6 +9,7 @@
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <stdlib.h>
+#include <random>
 
 using std::vector;
 namespace ego_planner
@@ -35,6 +36,8 @@ namespace ego_planner
     ros::Publisher intermediate_grad_feas_pub;
     ros::Publisher intermediate_grad_swarm_pub;
 
+    ros::Publisher corridor_pub;
+
   public:
     PlanningVisualization(/* args */) {}
     ~PlanningVisualization() {}
@@ -57,7 +60,7 @@ namespace ego_planner
     void displayFailedList(Eigen::MatrixXd failed_pts, int id);
     void displayAStarList(std::vector<std::vector<Eigen::Vector3d>> a_star_paths, int id);
     void displayArrowList(ros::Publisher &pub, const vector<Eigen::Vector3d> &list, double scale, Eigen::Vector4d color, int id);
-    
+    void displayCorridor(std::vector<std::pair<Eigen::Vector3d, double>> &corridor_list);
     void displayIntermediatePt(std::string type, Eigen::MatrixXd &pts, int id, Eigen::Vector4d color);
     void displayIntermediateGrad(std::string type, Eigen::MatrixXd &pts, Eigen::MatrixXd &grad, int id, Eigen::Vector4d color);
     // void displayNewArrow(ros::Publisher& guide_vector_pub, ego_planner::PolyTrajOptimizer::Ptr optimizer);

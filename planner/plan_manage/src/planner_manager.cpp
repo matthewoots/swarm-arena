@@ -44,6 +44,16 @@ namespace ego_planner
     grid_map_ = map;
   }
 
+  void EGOPlannerManager::setGraphSearch(const AStar::Ptr &a_star)
+  {
+    a_star_ = a_star;
+  }
+
+  void EGOPlannerManager::setCorridorGen(const std::shared_ptr<CorridorGen::CorridorGenerator> &corridor_gen)
+  {
+    corridor_gen_ = corridor_gen;
+  }
+
   bool EGOPlannerManager::reboundReplan(
       const Eigen::Vector3d &start_pt, const Eigen::Vector3d &start_vel,
       const Eigen::Vector3d &start_acc, const Eigen::Vector3d &local_target_pt,
@@ -54,7 +64,7 @@ namespace ego_planner
     ros::Duration t_init, t_opt;
 
     static int count = 0;
-    cout << "\033[47;30m\n[" << t_start << "] Drone " << pp_.drone_id << " Replan " << count++ << "\033[0m" << endl;
+    // cout << "\033[47;30m\n[" << t_start << "] Drone " << pp_.drone_id << " Replan " << count++ << "\033[0m" << endl;
     // cout.precision(3);
     // cout << "start: " << start_pt.transpose() << ", " << start_vel.transpose() << "\ngoal:" << local_target_pt.transpose() << ", " << local_target_vel.transpose()
     //      << endl;
@@ -164,7 +174,7 @@ namespace ego_planner
     }
 
     /*** STEP 3: Store and display results ***/
-    cout << "Success=" << (flag_success ? "yes" : "no") << endl;
+    // cout << "Success=" << (flag_success ? "yes" : "no") << endl;
     if (flag_success)
     {
       static double sum_time = 0;
@@ -202,9 +212,12 @@ namespace ego_planner
       poly_traj::MinJerkOpt &initMJO)
   {
 
+    // ROS_WARN("Call EGOPlannerManager::computeInitState");
+
     static bool flag_first_call = true;
 
-    if (flag_first_call || flag_polyInit) /*** case 1: polynomial initialization ***/
+    // if (flag_first_call || flag_polyInit) /*** case 1: polynomial initialization ***/
+    if (true)
     {
       flag_first_call = false;
 
@@ -216,6 +229,136 @@ namespace ego_planner
       constexpr double init_of_init_totaldur = 2.0;
       headState << start_pt, start_vel, start_acc;
       tailState << local_target_pt, local_target_vel, Eigen::Vector3d::Zero();
+
+      double distance = (local_target_pt - start_pt).norm();
+      // ROS_WARN("distance between local target point to start point is:");
+      // std::cout << distance << std::endl;
+
+      if (distance < 1)
+      {
+        piece_nums = 1;
+        piece_dur_vec.resize(1);
+        piece_dur_vec(0) = 1;
+        initMJO.reset(headState, tailState, piece_nums);
+        initMJO.generate(innerPs, piece_dur_vec);
+
+        return true;
+      }
+
+      else
+      {
+        // zt: raynor, conduct A* search for collision-free path
+        // A* search
+        // Corridor gen
+        // trajectory gen
+
+        std::vector<Eigen::Vector3d> path_list;
+        ASTAR_RET ret = a_star_->AstarSearch(grid_map_->getResolution(), start_pt, local_target_pt);
+
+        switch (ret)
+        {
+        case ASTAR_RET::SUCCESS:
+          /* code */
+          {
+            path_list = a_star_->getPath();
+            break;
+          }
+
+        case ASTAR_RET::SEARCH_ERR:
+        {
+          ROS_ERROR("Astar search error.");
+          return false;
+        }
+
+        default:
+          break;
+        }
+
+        bool corridor_generation_status = corridor_gen_->generateCorridorAlongPath(path_list);
+        std::vector<CorridorGen::Corridor> corridor_list_ = corridor_gen_->getCorridor();
+        std::vector<Eigen::Vector3d> corridor_waypts; // includes head, intermediate waypoints, tail
+        corridor_waypts = corridor_gen_->getWaypointList();
+
+        visualization_->displayCorridor(corridor_list_);
+
+        // ROS_WARN("corridor_waypts");
+        // std::cout << corridor_waypts.size() << std::endl;
+
+        std::vector<Eigen::Vector3d> inner_points;
+        Eigen::MatrixXd inner_points_mat;
+        inner_points_mat.resize(3, corridor_waypts.size() - 2);
+        for (int i = 1; i < corridor_waypts.size() - 1; i++)
+        {
+          inner_points.push_back(corridor_waypts[i]);
+          inner_points_mat.col(i - 1) = corridor_waypts[i];
+        }
+
+        // ROS_WARN("inner_points_mat setup");
+        // std::cout << inner_points_mat << std::endl;
+
+        piece_nums = inner_points.size() + 1;
+
+        double des_vel = pp_.max_vel_ / 1.5;
+        piece_dur_vec.resize(piece_nums);
+
+        std::vector<Eigen::Vector3d> points_for_time_allocation;
+        for (int i = 1; i < corridor_waypts.size(); i++)
+        {
+          points_for_time_allocation.push_back(corridor_waypts[i]);
+        }
+
+        piece_dur_vec = Eigen::VectorXd::Constant(piece_nums, 1.0);
+
+        // ROS_WARN("time allocated");
+
+        // std::cout << "inner_points_mat num: " << inner_points_mat.cols() << std::endl;
+        // std::cout << "piece_dur_vec size: " << piece_dur_vec.size() << std::endl;
+        // std::cout << "time allocation: " << piece_dur_vec.transpose() << std::endl;
+
+        initMJO.reset(headState, tailState, piece_nums);
+
+        initMJO.generate(inner_points_mat, piece_dur_vec);
+
+        return true;
+
+        for (int j = 0; j < 2; ++j)
+        {
+          for (size_t i = 0; i < points_for_time_allocation.size(); ++i)
+          {
+            piece_dur_vec(i) = (i == 0) ? (points_for_time_allocation[0] - start_pt).norm() / des_vel
+                                        : (points_for_time_allocation[i] - points_for_time_allocation[i - 1]).norm() / des_vel;
+          }
+          // ROS_WARN("time allocated");
+
+          // std::cout << "inner_points_mat num: " << inner_points_mat.cols() << std::endl;
+          // std::cout << "piece_dur_vec size: " << piece_dur_vec.size() << std::endl;
+          // std::cout << "time allocation: " << piece_dur_vec.transpose() << std::endl;
+
+          initMJO.generate(inner_points_mat, piece_dur_vec);
+
+          // ROS_WARN("initMJO generate");
+
+          if (initMJO.getTraj().getMaxVelRate() < pp_.max_vel_ ||
+              start_vel.norm() > pp_.max_vel_ ||
+              local_target_vel.norm() > pp_.max_vel_)
+          {
+            break;
+          }
+
+          if (j == 2)
+          {
+            ROS_WARN("Global traj MaxVel = %f > set_max_vel", initMJO.getTraj().getMaxVelRate());
+            cout << "headState=" << endl
+                 << headState << endl;
+            cout << "tailState=" << endl
+                 << tailState << endl;
+          }
+
+          des_vel /= 1.5;
+        }
+
+        return true;
+      }
 
       /* determined or random inner point */
       if (!flag_randomPolyTraj)
@@ -276,54 +419,55 @@ namespace ego_planner
     }
     else /*** case 2: initialize from previous optimal trajectory ***/
     {
-      if (traj_.global_traj.last_glb_t_of_lc_tgt < 0.0)
-      {
-        ROS_ERROR("You are initialzing a trajectory from a previous optimal trajectory, but no previous trajectories up to now.");
-        return false;
-      }
+      ROS_ERROR("callReboundReplan(false, ...), flag_use_poly_init is false or have_new_target_ is false");
+      // if (traj_.global_traj.last_glb_t_of_lc_tgt < 0.0)
+      // {
+      //   ROS_ERROR("You are initialzing a trajectory from a previous optimal trajectory, but no previous trajectories up to now.");
+      //   return false;
+      // }
 
-      /* the trajectory time system is a little bit complicated... */
-      double passed_t_on_lctraj = ros::Time::now().toSec() - traj_.local_traj.start_time;
-      double t_to_lc_end = traj_.local_traj.duration - passed_t_on_lctraj;
-      if (t_to_lc_end < 0)
-      {
-        ROS_INFO("t_to_lc_end < 0, exit and wait for another call.");
-        return false;
-      }
-      double t_to_lc_tgt = t_to_lc_end +
-                           (traj_.global_traj.glb_t_of_lc_tgt - traj_.global_traj.last_glb_t_of_lc_tgt);
-      int piece_nums = ceil((start_pt - local_target_pt).norm() / pp_.polyTraj_piece_length);
-      if (piece_nums < 2)
-        piece_nums = 2;
+      // /* the trajectory time system is a little bit complicated... */
+      // double passed_t_on_lctraj = ros::Time::now().toSec() - traj_.local_traj.start_time;
+      // double t_to_lc_end = traj_.local_traj.duration - passed_t_on_lctraj;
+      // if (t_to_lc_end < 0)
+      // {
+      //   ROS_INFO("t_to_lc_end < 0, exit and wait for another call.");
+      //   return false;
+      // }
+      // double t_to_lc_tgt = t_to_lc_end +
+      //                      (traj_.global_traj.glb_t_of_lc_tgt - traj_.global_traj.last_glb_t_of_lc_tgt);
+      // int piece_nums = ceil((start_pt - local_target_pt).norm() / pp_.polyTraj_piece_length);
+      // if (piece_nums < 2)
+      //   piece_nums = 2;
 
-      Eigen::Matrix3d headState, tailState;
-      Eigen::MatrixXd innerPs(3, piece_nums - 1);
-      Eigen::VectorXd piece_dur_vec = Eigen::VectorXd::Constant(piece_nums, t_to_lc_tgt / piece_nums);
-      headState << start_pt, start_vel, start_acc;
-      tailState << local_target_pt, local_target_vel, Eigen::Vector3d::Zero();
+      // Eigen::Matrix3d headState, tailState;
+      // Eigen::MatrixXd innerPs(3, piece_nums - 1);
+      // Eigen::VectorXd piece_dur_vec = Eigen::VectorXd::Constant(piece_nums, t_to_lc_tgt / piece_nums);
+      // headState << start_pt, start_vel, start_acc;
+      // tailState << local_target_pt, local_target_vel, Eigen::Vector3d::Zero();
 
-      double t = piece_dur_vec(0);
-      for (int i = 0; i < piece_nums - 1; ++i)
-      {
-        if (t < t_to_lc_end)
-        {
-          innerPs.col(i) = traj_.local_traj.traj.getPos(t + passed_t_on_lctraj);
-        }
-        else if (t <= t_to_lc_tgt)
-        {
-          double glb_t = t - t_to_lc_end + traj_.global_traj.last_glb_t_of_lc_tgt - traj_.global_traj.global_start_time;
-          innerPs.col(i) = traj_.global_traj.traj.getPos(glb_t);
-        }
-        else
-        {
-          ROS_ERROR("Should not happen! x_x 0x88 t=%.2f, t_to_lc_end=%.2f, t_to_lc_tgt=%.2f", t, t_to_lc_end, t_to_lc_tgt);
-        }
+      // double t = piece_dur_vec(0);
+      // for (int i = 0; i < piece_nums - 1; ++i)
+      // {
+      //   if (t < t_to_lc_end)
+      //   {
+      //     innerPs.col(i) = traj_.local_traj.traj.getPos(t + passed_t_on_lctraj);
+      //   }
+      //   else if (t <= t_to_lc_tgt)
+      //   {
+      //     double glb_t = t - t_to_lc_end + traj_.global_traj.last_glb_t_of_lc_tgt - traj_.global_traj.global_start_time;
+      //     innerPs.col(i) = traj_.global_traj.traj.getPos(glb_t);
+      //   }
+      //   else
+      //   {
+      //     ROS_ERROR("Should not happen! x_x 0x88 t=%.2f, t_to_lc_end=%.2f, t_to_lc_tgt=%.2f", t, t_to_lc_end, t_to_lc_tgt);
+      //   }
 
-        t += piece_dur_vec(i + 1);
-      }
+      //   t += piece_dur_vec(i + 1);
+      // }
 
-      initMJO.reset(headState, tailState, piece_nums);
-      initMJO.generate(innerPs, piece_dur_vec);
+      // initMJO.reset(headState, tailState, piece_nums);
+      // initMJO.generate(innerPs, piece_dur_vec);
     }
 
     return true;
@@ -420,7 +564,7 @@ namespace ego_planner
     {
       if ((traj_.local_traj.traj.getPos(t - my_traj_start_time) -
            traj_.swarm_traj[drone_id].traj.getPos(t - other_traj_start_time))
-              .norm() < (getSwarmClearance() + traj_.swarm_traj[drone_id].des_clearance) )
+              .norm() < (getSwarmClearance() + traj_.swarm_traj[drone_id].des_clearance))
       {
         return true;
       }

@@ -44,13 +44,15 @@ namespace ego_planner
 
     a_star_.reset(new AStar);
     a_star_->initGridMap(grid_map_, Eigen::Vector3i(100, 100, 100));
-    
+
     local_cloud_.reset(new pcl::PointCloud<pcl::PointXYZ>);
     corridor_gen_ = std::make_shared<CorridorGen::CorridorGenerator>(resolution_, clearance_, max_sample_, ceiling_, floor_limit_, goal_pt_margin_);
 
     planner_manager_.reset(new EGOPlannerManager);
 
     planner_manager_->setEnvironment(grid_map_);
+    planner_manager_->setGraphSearch(a_star_);
+    planner_manager_->setCorridorGen(corridor_gen_);
     planner_manager_->initPlanModules(nh, visualization_);
 
     have_trigger_ = !flag_realworld_experiment_;
@@ -62,7 +64,7 @@ namespace ego_planner
 
     odom_sub_ = nh.subscribe("odom_world", 1, &EGOReplanFSM::odometryCallback, this);
     mandatory_stop_sub_ = nh.subscribe("mandatory_stop", 1, &EGOReplanFSM::mandatoryStopCallback, this);
-    cloud_sub_ = nh.subscribe("mandatory_stop", 1, &EGOReplanFSM::cloudCallback, this);
+    cloud_sub_ = nh.subscribe("fsm/astar/cloud", 1, &EGOReplanFSM::cloudCallback, this);
 
     /* Use MINCO trajectory to minimize the message size in wireless communication */
     broadcast_ploytraj_pub_ = nh.advertise<traj_utils::MINCOTraj>("planning/broadcast_traj_send", 10);
@@ -172,6 +174,7 @@ namespace ego_planner
 
     case REPLAN_TRAJ:
     {
+      ROS_INFO("REPLAN_TRAJ");
 
       if (planFromLocalTraj(1))
       {
@@ -194,9 +197,23 @@ namespace ego_planner
       Eigen::Vector3d pos = info->traj.getPos(t_cur);
       bool touch_the_goal = ((local_target_pt_ - final_goal_).norm() < 1e-2);
 
+      ROS_WARN("(local_target_pt_ - final_goal_).norm()");
+      std::cout << (local_target_pt_ - final_goal_).norm() << std::endl;
+      ROS_WARN("(local_target_pt_");
+      std::cout << local_target_pt_.transpose() << std::endl;
+      ROS_WARN("final_goal_");
+      std::cout << final_goal_.transpose() << std::endl;
+
       const PtsChk_t *chk_ptr = &planner_manager_->traj_.local_traj.pts_chk;
       bool close_to_current_traj_end = (chk_ptr->size() >= 1 && chk_ptr->back().size() >= 1) ? chk_ptr->back().back().first - t_cur < emergency_time_ : 0; // In case of empty vector
-
+      if (t_cur > info->duration - 1e-2)
+      {
+        ROS_WARN("t_cur > info->duration - 1e-2");
+      }
+      if (touch_the_goal)
+      {
+        ROS_WARN("touch_the_goal");
+      }
       if (mondifyInCollisionFinalGoal()) // case 1: find that current goal is in obstacles
       {
         // pass
@@ -208,7 +225,8 @@ namespace ego_planner
         wpt_id_++;
         planNextWaypoint(wps_[wpt_id_]);
       }
-      else if ((t_cur > info->duration - 1e-2) && touch_the_goal) // case 3: the final waypoint reached
+      // else if ((t_cur > info->duration - 1e-2) && touch_the_goal) // case 3: the final waypoint reached
+      else if (touch_the_goal)
       {
         have_target_ = false;
         have_trigger_ = false;
@@ -275,7 +293,7 @@ namespace ego_planner
   {
     static string state_str[8] = {"INIT", "WAIT_TARGET", "GEN_NEW_TRAJ", "REPLAN_TRAJ", "EXEC_TRAJ", "EMERGENCY_STOP", "SEQUENTIAL_START"};
 
-    cout << "\r[FSM]: state: " + state_str[int(exec_state_)] << ", Drone:" << planner_manager_->pp_.drone_id;
+    // cout << "\r[FSM]: state: " + state_str[int(exec_state_)] << ", Drone:" << planner_manager_->pp_.drone_id;
 
     // some warnings
     if (!have_odom_ || !have_target_ || !have_trigger_ || (planner_manager_->pp_.drone_id >= 1 && !have_recv_pre_agent_))
@@ -522,43 +540,73 @@ namespace ego_planner
 
   bool EGOReplanFSM::planNextWaypoint(const Eigen::Vector3d next_wp)
   {
-    bool success = false;
-
-    // zt: raynor
-    // conduct A* search
-    std::vector<Eigen::Vector3d> path_list;
-    ASTAR_RET ret = a_star_->AstarSearch(grid_map_->getResolution(), odom_pos_, next_wp);
-
-    switch (ret)
+    Eigen::Vector3d target = next_wp;
+    target.z() = 1.5;
+    if (false) // use astar and corridor gen for this function
     {
-    case ASTAR_RET::SUCCESS:
-      /* code */
+      bool success = false;
+
+      // zt: raynor
+      // conduct A* search
+      std::vector<Eigen::Vector3d> path_list;
+      ASTAR_RET ret = a_star_->AstarSearch(grid_map_->getResolution(), odom_pos_, target);
+      ROS_WARN("next waypoint is: ");
+      std::cout << target.transpose() << std::endl;
+
+      switch (ret)
       {
-        path_list = a_star_->getPath();
+      case ASTAR_RET::SUCCESS:
+        /* code */
+        {
+          path_list = a_star_->getPath();
+          break;
+        }
+
+      case ASTAR_RET::SEARCH_ERR:
+      {
+        ROS_ERROR("Astar search error.");
+        return false;
+      }
+
+      default:
         break;
       }
 
-    case ASTAR_RET::SEARCH_ERR:
-    {
-      ROS_ERROR("Astar search error.");
-      return false;
+      bool corridor_generation_status = corridor_gen_->generateCorridorAlongPath(path_list);
+      corridor_list_ = corridor_gen_->getCorridor();
+
+      std::vector<Eigen::Vector3d> corridor_waypts;
+      corridor_waypts = corridor_gen_->getWaypointList();
+
+      std::vector<Eigen::Vector3d> one_pt_wps;
+
+      // zt: raynor
+      for (int i = 1; i < corridor_waypts.size(); i++)
+      {
+        one_pt_wps.push_back(corridor_waypts[i]);
+      }
+
+      // one_pt_wps.push_back(next_wp);
+      success = planner_manager_->planGlobalTrajWaypoints(
+          odom_pos_, odom_vel_, Eigen::Vector3d::Zero(),
+          one_pt_wps, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
+
+      ROS_WARN("planGlobalTrajWaypoints status: ");
+      std::cout << success << std::endl;
     }
 
-    default:
-      break;
-    }
+    // visualization_->displayGoalPoint(next_wp, Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, 0);
 
+    bool success = false;
     std::vector<Eigen::Vector3d> one_pt_wps;
     one_pt_wps.push_back(next_wp);
     success = planner_manager_->planGlobalTrajWaypoints(
         odom_pos_, odom_vel_, Eigen::Vector3d::Zero(),
         one_pt_wps, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
 
-    // visualization_->displayGoalPoint(next_wp, Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, 0);
-
     if (success)
     {
-      final_goal_ = next_wp;
+      final_goal_ = target;
 
       /*** display ***/
       constexpr double step_size_t = 0.1;

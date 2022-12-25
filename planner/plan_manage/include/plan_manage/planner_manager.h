@@ -10,6 +10,8 @@
 #include <ros/ros.h>
 #include <traj_utils/planning_visualization.h>
 #include <optimizer/poly_traj_utils.hpp>
+#include <path_searching/dyn_a_star.h>
+#include <corridor_gen/include/corridor_gen.h>
 
 namespace ego_planner
 {
@@ -54,11 +56,15 @@ namespace ego_planner
     inline int getCpsNumPrePiece(void) { return ploy_traj_opt_->get_cps_num_prePiece_(); }
 
     void setEnvironment(const GridMap::Ptr &map);
+    void setGraphSearch(const AStar::Ptr &a_star);
+    void setCorridorGen(const std::shared_ptr<CorridorGen::CorridorGenerator> &corridor_gen);
     // inline PtsChk_t getPtsCheck(void) { return ploy_traj_opt_->get_pts_check_(); }
 
     PlanParameters pp_;
     GridMap::Ptr grid_map_;
     TrajContainer traj_;
+    AStar::Ptr a_star_;
+    std::shared_ptr<CorridorGen::CorridorGenerator> corridor_gen_;
 
   private:
     PlanningVisualization::Ptr visualization_;

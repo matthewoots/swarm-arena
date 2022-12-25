@@ -66,6 +66,7 @@ namespace ego_planner
     GridMap::Ptr grid_map_;
     std::shared_ptr<CorridorGen::CorridorGenerator> corridor_gen_;
     pcl::PointCloud<pcl::PointXYZ>::Ptr local_cloud_;
+    std::vector<CorridorGen::Corridor> corridor_list_;
 
     /* parameters */
     int target_type_; // 1 mannual select, 2 hard code
