@@ -1197,7 +1197,7 @@ namespace ego_planner
   }
 
   template <typename EIGENVEC>
-  void PolyTrajOptimizer::VirtualT2RealT(const EIGENVEC &VT, Eigen::VectorXd &RT)
+  void PolyTrajOptimizer::VirtualT2RealT(const EIGENVEC &VT, Eigen::VectorXd &RT) // forwardT in gcopter paper
   {
     for (int i = 0; i < VT.size(); ++i)
     {

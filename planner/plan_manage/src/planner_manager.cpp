@@ -191,6 +191,7 @@ namespace ego_planner
     }
     else
     {
+      ROS_ERROR("BBBB");
       poly_traj::Trajectory initTraj = initMJO.getTraj();
       int PN = initTraj.getPieceNum();
       Eigen::MatrixXd all_pos = initTraj.getPositions();
