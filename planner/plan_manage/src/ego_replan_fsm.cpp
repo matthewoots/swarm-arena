@@ -197,23 +197,8 @@ namespace ego_planner
       Eigen::Vector3d pos = info->traj.getPos(t_cur);
       bool touch_the_goal = ((local_target_pt_ - final_goal_).norm() < 1e-2);
 
-      ROS_WARN("(local_target_pt_ - final_goal_).norm()");
-      std::cout << (local_target_pt_ - final_goal_).norm() << std::endl;
-      ROS_WARN("(local_target_pt_");
-      std::cout << local_target_pt_.transpose() << std::endl;
-      ROS_WARN("final_goal_");
-      std::cout << final_goal_.transpose() << std::endl;
-
       const PtsChk_t *chk_ptr = &planner_manager_->traj_.local_traj.pts_chk;
       bool close_to_current_traj_end = (chk_ptr->size() >= 1 && chk_ptr->back().size() >= 1) ? chk_ptr->back().back().first - t_cur < emergency_time_ : 0; // In case of empty vector
-      if (t_cur > info->duration - 1e-2)
-      {
-        ROS_WARN("t_cur > info->duration - 1e-2");
-      }
-      if (touch_the_goal)
-      {
-        ROS_WARN("touch_the_goal");
-      }
       if (mondifyInCollisionFinalGoal()) // case 1: find that current goal is in obstacles
       {
         // pass

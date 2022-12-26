@@ -64,12 +64,12 @@ namespace ego_planner
     ros::Duration t_init, t_opt;
 
     static int count = 0;
-    // cout << "\033[47;30m\n[" << t_start << "] Drone " << pp_.drone_id << " Replan " << count++ << "\033[0m" << endl;
-    // cout.precision(3);
-    // cout << "start: " << start_pt.transpose() << ", " << start_vel.transpose() << "\ngoal:" << local_target_pt.transpose() << ", " << local_target_vel.transpose()
-    //      << endl;
-    // if ((start_pt - local_target_pt).norm() < 0.2)
-    //   cout << "Close to goal" << endl;
+    cout << "\033[47;30m\n[" << t_start << "] Drone " << pp_.drone_id << " Replan " << count++ << "\033[0m" << endl;
+    cout.precision(3);
+    cout << "start: " << start_pt.transpose() << ", " << start_vel.transpose() << "\ngoal:" << local_target_pt.transpose() << ", " << local_target_vel.transpose()
+         << endl;
+    if ((start_pt - local_target_pt).norm() < 0.2)
+      cout << "Close to goal" << endl;
 
     /*** STEP 1: INIT ***/
     ploy_traj_opt_->setIfTouchGoal(touch_goal);
@@ -273,6 +273,11 @@ namespace ego_planner
         default:
           break;
         }
+
+        std::vector<std::vector<Eigen::Vector3d>> path_list_vect;
+        path_list_vect.push_back(path_list);
+
+        visualization_->displayAStarList(path_list_vect, 0);
 
         bool corridor_generation_status = corridor_gen_->generateCorridorAlongPath(path_list);
         std::vector<CorridorGen::Corridor> corridor_list_ = corridor_gen_->getCorridor();

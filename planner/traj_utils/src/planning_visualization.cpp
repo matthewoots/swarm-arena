@@ -396,8 +396,36 @@ namespace ego_planner
     std::mt19937 generator(dev());
     std::uniform_real_distribution<double> dis(0.0, 1.0);
     visualization_msgs::MarkerArray corridors_array;
+    for (int i = 0; i < 20; i++)
+    {
+      Eigen::Vector3d position = corridor_list[i].first;
+      double radius = corridor_list[i].second;
+      visualization_msgs::Marker corridor_sphere;
+      corridor_sphere.header.frame_id = "world";
+      corridor_sphere.header.stamp = ros::Time::now();
+      corridor_sphere.id = i;
+      corridor_sphere.type = visualization_msgs::Marker::SPHERE;
+      corridor_sphere.action = visualization_msgs::Marker::DELETEALL;
+      corridor_sphere.pose.position.x = position.x();
+      corridor_sphere.pose.position.y = position.y();
+      corridor_sphere.pose.position.z = position.z();
+      corridor_sphere.pose.orientation.x = 0.0;
+      corridor_sphere.pose.orientation.y = 0.0;
+      corridor_sphere.pose.orientation.z = 0.0;
+      corridor_sphere.pose.orientation.w = 1.0;
+      corridor_sphere.scale.x = radius * 2;
+      corridor_sphere.scale.y = radius * 2;
+      corridor_sphere.scale.z = radius * 2;
+      corridor_sphere.color.a = 0.2; // Don't forget to set the alpha!
+      corridor_sphere.color.r = dis(generator);
+      corridor_sphere.color.g = dis(generator);
+      corridor_sphere.color.b = dis(generator);
+
+      corridors_array.markers.emplace_back(corridor_sphere);
+    }
     corridor_pub.publish(corridors_array);
 
+    corridors_array.markers.clear();
     corridors_array.markers.reserve(corridor_list.size());
     int index = 0;
 
