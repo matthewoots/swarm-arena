@@ -12,6 +12,7 @@ namespace ego_planner
     have_recv_pre_agent_ = false;
     flag_escape_emergency_ = true;
     mandatory_stop_ = false;
+    max_speed = 0;
 
     /*  fsm param  */
     nh.param("fsm/flight_type", target_type_, -1);
@@ -94,10 +95,25 @@ namespace ego_planner
         ros::Duration(0.001).sleep();
       }
 
+      std::cout << "Planner start planning for drone " + to_string(planner_manager_->pp_.drone_id) << std::endl;
+      start_time = ros::Time::now();
+
       readGivenWpsAndPlan();
     }
     else
       cout << "Wrong target_type_ value! target_type_=" << target_type_ << endl;
+  }
+
+  double EGOReplanFSM::computeFlightDistance(std::vector<Eigen::Vector3f> flight_path_container)
+  {
+    std::vector<Eigen::Vector3f> copy = flight_path_container;
+    double total_dist = 0;
+    for (int i = 0; i < copy.size() - 1; i++)
+    {
+      total_dist += (copy[i + 1] - copy[i]).norm();
+    }
+
+    return total_dist;
   }
 
   void EGOReplanFSM::execFSMCallback(const ros::TimerEvent &e)
@@ -199,7 +215,7 @@ namespace ego_planner
 
       const PtsChk_t *chk_ptr = &planner_manager_->traj_.local_traj.pts_chk;
       bool close_to_current_traj_end = (chk_ptr->size() >= 1 && chk_ptr->back().size() >= 1) ? chk_ptr->back().back().first - t_cur < emergency_time_ : 0; // In case of empty vector
-      if (mondifyInCollisionFinalGoal()) // case 1: find that current goal is in obstacles
+      if (mondifyInCollisionFinalGoal())                                                                                                                   // case 1: find that current goal is in obstacles
       {
         // pass
       }
@@ -225,6 +241,12 @@ namespace ego_planner
 
         /* The navigation task completed */
         changeFSMExecState(WAIT_TARGET, "FSM");
+        end_time = ros::Time::now();
+        planner_manager_->mission_finished = true;
+        std::vector<Eigen::Vector3f> copy = flight_path_;
+        double dist = this->computeFlightDistance(copy);
+        // std::cout << "agent " << planner_manager_->pp_.drone_id << "flight distance " << dist << std::endl;
+        planner_manager_->saveSummarizedResult(start_time, end_time, dist, max_speed);
       }
       else if (t_cur > replan_thresh_ || (!touch_the_goal && close_to_current_traj_end)) // case 3: time to perform next replan
       {
@@ -716,6 +738,15 @@ namespace ego_planner
     odom_vel_(2) = msg->twist.twist.linear.z;
 
     have_odom_ = true;
+
+    flight_path_.push_back({msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z});
+
+    double speed = Eigen::Vector3f({odom_vel_(0), odom_vel_(1), odom_vel_(2)}).norm();
+
+    if (speed > max_speed)
+    {
+      max_speed = speed;
+    }
   }
 
   void EGOReplanFSM::cloudCallback(const sensor_msgs::PointCloud2ConstPtr &cloud_in)

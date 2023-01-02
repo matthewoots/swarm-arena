@@ -24,13 +24,14 @@ find_package(catkin REQUIRED COMPONENTS
   traj_utils
   message_generation
   cv_bridge
+  roslib
 )
 
 # catkin_package(CATKIN_DEPENDS message_runtime)
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES ego_planner
- CATKIN_DEPENDS plan_env path_searching traj_opt traj_utils
+ CATKIN_DEPENDS plan_env path_searching traj_opt traj_utils roslib
 #  DEPENDS system_lib
 )
 link_directories(${PCL_LIBRARY_DIRS})

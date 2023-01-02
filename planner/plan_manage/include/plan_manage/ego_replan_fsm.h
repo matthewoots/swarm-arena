@@ -9,6 +9,7 @@
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
 #include <std_msgs/Float64.h>
+#include <std_msgs/Bool.h>
 #include <vector>
 #include <visualization_msgs/Marker.h>
 
@@ -89,16 +90,20 @@ namespace ego_planner
     int continously_called_times_{0};
 
     Eigen::Vector3d start_pt_, start_vel_, start_acc_;   // start state
-    Eigen::Vector3d final_goal_;                             // goal state
+    Eigen::Vector3d final_goal_;                         // goal state
     Eigen::Vector3d local_target_pt_, local_target_vel_; // local target state
     Eigen::Vector3d odom_pos_, odom_vel_, odom_acc_;     // odometry state
     std::vector<Eigen::Vector3d> wps_;
+    std::vector<Eigen::Vector3f> flight_path_; // for trajectory distance calculation
+    double max_speed;
 
     /* ROS utils */
     ros::NodeHandle node_;
     ros::Timer exec_timer_, safety_timer_;
     ros::Subscriber waypoint_sub_, odom_sub_, trigger_sub_, broadcast_ploytraj_sub_, mandatory_stop_sub_, cloud_sub_;
     ros::Publisher poly_traj_pub_, data_disp_pub_, broadcast_ploytraj_pub_, heartbeat_pub_, ground_height_pub_;
+    // ros::Publisher mission_finished_pub_;
+    ros::Time start_time, end_time;
 
     /* state machine functions */
     void execFSMCallback(const ros::TimerEvent &e);
@@ -130,6 +135,9 @@ namespace ego_planner
 
     /* ground height measurement */
     bool measureGroundHeight(double &height);
+
+    /* compute trajectory distance*/
+    double computeFlightDistance(std::vector<Eigen::Vector3f> flight_path_container);
 
     // required by corridor_gen
     void cloudCallback(const sensor_msgs::PointCloud2ConstPtr &cloud_in);

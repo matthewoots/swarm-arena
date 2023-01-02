@@ -9,7 +9,8 @@
 #include <traj_utils/MINCOTraj.h>
 #include <quadrotor_msgs/GoalSet.h>
 #include <sensor_msgs/Joy.h>
-
+#include <ros/package.h>
+#include <fstream>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -111,7 +112,7 @@ int serializeTopic(const MESSAGE_TYPE msg_type, const T &msg)
 {
   auto ptr = (uint8_t *)(udp_send_buf_);
 
-  *((MESSAGE_TYPE*)ptr) = msg_type;
+  *((MESSAGE_TYPE *)ptr) = msg_type;
   ptr += sizeof(MESSAGE_TYPE);
 
   namespace ser = ros::serialization;
@@ -280,7 +281,7 @@ void udp_recv_fun()
 
     case MESSAGE_TYPE::GOAL:
     {
-      
+
       if (valread == deserializeTopic(goal_msg_))
       {
         goal_pub_.publish(goal_msg_);
@@ -296,7 +297,7 @@ void udp_recv_fun()
 
     case MESSAGE_TYPE::JOY:
     {
-      
+
       if (valread == deserializeTopic(joy_msg_))
       {
         joy_pub_.publish(joy_msg_);
@@ -327,7 +328,15 @@ int main(int argc, char **argv)
   nh.param("broadcast_ip", udp_ip_, string("127.0.0.255"));
   nh.param("drone_id", drone_id_, -1);
   nh.param("odom_max_freq", odom_broadcast_freq_, 1000.0);
+  // nh.param<std::string>("scenario", scenario, "none");
 
+  // std::string package_path = ros::package::getPath("ego_planner");
+  // std::string file_name = package_path + "/log/summary_" + scenario + ".csv";
+  // // std::ifstream result_csv_in(file_name);
+  // std::ofstream result_csv_out;
+  // result_csv_out.open(file_name, std::ios_base::app);
+  // result_csv_out << "\ndrone_id,min_planning_time,max_planning_time, avg_planning_time,average_init_time,average_opt_time, mission_time\n";
+  // result_csv_out.close();
   if (drone_id_ == -1)
   {
     ROS_WARN("[swarm bridge] Wrong drone_id!");

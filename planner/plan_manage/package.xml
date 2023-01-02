@@ -62,6 +62,7 @@
   <build_export_depend>traj_utils</build_export_depend>
   <build_export_depend>traj_opt</build_export_depend>
   <build_export_depend>path_searching</build_export_depend>
+  <build_depend>roslib</build_depend>
 
   <exec_depend>roscpp</exec_depend>
   <exec_depend>plan_env</exec_depend>
@@ -70,6 +71,7 @@
   <exec_depend>traj_utils</exec_depend>
   <exec_depend>traj_opt</exec_depend>
   <exec_depend>path_searching</exec_depend>
+  <exec_depend>roslib</exec_depend>
   
 
 
