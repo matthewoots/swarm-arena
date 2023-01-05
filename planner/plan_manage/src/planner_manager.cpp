@@ -313,6 +313,52 @@ namespace ego_planner
         return true;
       }
 
+      else if (continous_failures_count_ > 0)
+      {
+        Eigen::Vector3d horizen_dir = ((start_pt - local_target_pt).cross(Eigen::Vector3d(0, 0, 1))).normalized();
+        Eigen::Vector3d vertical_dir = ((start_pt - local_target_pt).cross(horizen_dir)).normalized();
+        innerPs.resize(3, 1);
+        innerPs = (start_pt + local_target_pt) / 2 +
+                  (((double)rand()) / RAND_MAX - 0.5) *
+                      (start_pt - local_target_pt).norm() *
+                      horizen_dir * 0.8 * (-0.978 / (continous_failures_count_ + 0.989) + 0.989) +
+                  (((double)rand()) / RAND_MAX - 0.5) *
+                      (start_pt - local_target_pt).norm() *
+                      vertical_dir * 0.4 * (-0.978 / (continous_failures_count_ + 0.989) + 0.989);
+
+        piece_nums = 2;
+        piece_dur_vec.resize(2);
+        piece_dur_vec = Eigen::Vector2d(init_of_init_totaldur / 2, init_of_init_totaldur / 2);
+
+        initMJO.reset(headState, tailState, piece_nums);
+        initMJO.generate(innerPs, piece_dur_vec);
+        poly_traj::Trajectory initTraj = initMJO.getTraj();
+
+        /* generate the real init trajectory */
+        piece_nums = round((headState.col(0) - tailState.col(0)).norm() / pp_.polyTraj_piece_length);
+        if (piece_nums < 2)
+          piece_nums = 2;
+        double piece_dur = init_of_init_totaldur / (double)piece_nums;
+        piece_dur_vec.resize(piece_nums);
+        piece_dur_vec = Eigen::VectorXd::Constant(piece_nums, ts);
+        innerPs.resize(3, piece_nums - 1);
+        int id = 0;
+        double t_s = piece_dur, t_e = init_of_init_totaldur - piece_dur / 2;
+        for (double t = t_s; t < t_e; t += piece_dur)
+        {
+          innerPs.col(id++) = initTraj.getPos(t);
+        }
+        if (id != piece_nums - 1)
+        {
+          ROS_ERROR("Should not happen! x_x");
+          return false;
+        }
+        initMJO.reset(headState, tailState, piece_nums);
+        initMJO.generate(innerPs, piece_dur_vec);
+
+        return true;
+      }
+
       else
       {
         // zt: raynor, conduct A* search for collision-free path
